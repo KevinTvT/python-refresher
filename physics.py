@@ -130,10 +130,13 @@ def calculate_auv_acceleration(
 ):
     if mass <= 0 or volume <= 0:
         raise ValueError("Mass or volume cannot be negative or 0")
-    return (
-        F_magnitude * math.cos(F_angle) / mass,
-        F_magnitude * math.sin(F_angle) / mass,
+    forces = np.copy(
+        [
+            F_magnitude * math.cos(F_angle) / mass,
+            F_magnitude * math.sin(F_angle) / mass,
+        ]
     )
+    return forces
 
 
 """Problem 8 (part 2)

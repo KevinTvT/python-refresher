@@ -60,19 +60,27 @@ class TestPhysics(unittest.TestCase):
         )
 
     def test_calculate_auv_acceleration(self):
-        self.assertEqual(physics.calculate_auv_acceleration(5, np.pi / 2, 2), (0, 2.5))
-        self.assertNotEqual(physics.calculate_auv_acceleration(5, 0, 2), (2.5, 0))
-        self.assertEqual(
-            physics.calculate_auv_acceleration(
-                500, np.pi / 4, volume=100, thruster_distance=100
-            ),
-            (2.5 * np.sqrt(2), 2.5 * np.sqrt(2)),
+        self.assertTrue(
+            np.allclose(physics.calculate_auv_acceleration(5, np.pi / 2, 2), [0, 2.5])
         )
-        self.assertNotEqual(
-            physics.calculate_auv_acceleration(
-                500, 1, volume=100, thruster_distance=100
+        self.assertFalse(
+            np.allclose(physics.calculate_auv_acceleration(5, np.pi / 2, 2), [0, 2])
+        )
+        self.assertTrue(
+            np.allclose(
+                physics.calculate_auv_acceleration(
+                    500, np.pi / 4, volume=100, thruster_distance=100
+                ),
+                [2.5 * np.sqrt(2), 2.5 * np.sqrt(2)],
+            )
+        )
+        self.assertFalse(
+            np.allclose(
+                physics.calculate_auv_acceleration(
+                    500, 1, volume=100, thruster_distance=100
+                ),
+                [2, 2],
             ),
-            (2, 2),
         )
         self.assertRaises(
             ValueError, lambda: physics.calculate_auv_acceleration(5, 1, -5, 5)
