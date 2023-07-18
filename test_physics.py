@@ -107,32 +107,25 @@ class TestPhysics(unittest.TestCase):
         )
 
     def test_calculate_auv2_acceleration(self):
-        testOne = physics.calculate_auv2_acceleration([20, 20, 10, 10], np.pi / 4, 0)
         self.assertTrue(
             np.allclose(
-                testOne,
-                [10 * np.sqrt(2), 0],
+                physics.calculate_auv2_acceleration(
+                    [2, 4, 8, 6], np.pi / 4, np.pi / 6, 1
+                ),
+                [np.sqrt(2) - 2 * np.sqrt(6), -2 * np.sqrt(2) - np.sqrt(6)],
             )
         )
-        self.assertFalse(np.allclose(testOne, [10, 0]))
 
-        testTwo = physics.calculate_auv2_acceleration(
-            [40, 20, 30, 20], np.pi / 3, np.pi / 6, 500
-        )  # π/6 is 30˚
-        self.assertTrue(np.allclose(testTwo, [5 * np.sqrt(3), 5]))
-        self.assertFalse(np.allclose(testTwo, [10 * np.sqrt(3), 10]))
-
-        testThree = physics.calculate_auv2_acceleration(
-            [-40, -20, 30, 20], np.pi / 3, np.pi / 6
+        self.assertFalse(
+            np.allclose(
+                physics.calculate_auv2_acceleration(
+                    [2, 4, 5, 3], np.pi / 6, np.pi / 4, 1
+                ),
+                [np.sqrt(5) - 3 * np.sqrt(8), -2 * np.sqrt(3) - np.sqrt(7)],
+            )
         )
-        self.assertTrue(np.allclose(testThree, [-70 / 2 * np.sqrt(3), 5]))
-        self.assertFalse(np.allclose(testThree, [-140 / 2 * np.sqrt(3), 10]))
-        self.assertRaises(
-            ValueError,
-            lambda: physics.calculate_auv2_acceleration(
-                [-40, -20, 30, 20], np.pi / 3, np.pi / 6, -20
-            ),
-        )
+        with self.assertRaises(ValueError):
+            physics.calculate_auv2_acceleration([2, 3, 4, 5, 6], 2, 3, -3)
 
     def test_calculate_auv2_angular_acceleration(self):
         testOne = physics.calculate_auv2_angular_acceleration(
@@ -154,5 +147,50 @@ class TestPhysics(unittest.TestCase):
                 np.pi,
                 -1,
                 0,
+            ),
+        )
+
+    def test_simulate_auv2_motion(self):
+        (
+            t_test,
+            x_test,
+            y_test,
+            theta_test,
+            v_test,
+            omega_test,
+            a_test,
+        ) = physics.simulate_auv2_motion(
+            np.array([1, 0, 1, 0]), 0.5, 1.5, 1.8, dt=0.5, t_final=1.5
+        )
+        self.assertTrue(np.allclose(t_test, [0, 0.5, 1.0]))
+        self.assertEqual(np.all(x_test), 0)
+        self.assertEqual(np.all(y_test), 0)
+        self.assertTrue(np.allclose(theta_test, [0, 0, 0.011493934596544877]))
+        self.assertEqual(np.all(v_test), 0)
+        self.assertEqual(np.all(a_test), 0)
+        self.assertTrue(np.allclose(omega_test, [0, 0.022987869193089754, 0.04597574]))
+
+        self.assertRaises(
+            ValueError,
+            lambda: physics.simulate_auv2_motion(
+                np.array([1, 0, 1, 0]), 0.5, -1.5, 1.8, dt=0.5, t_final=1.5
+            ),
+        )
+        self.assertRaises(
+            ValueError,
+            lambda: physics.simulate_auv2_motion(
+                np.array([1, 0, 1, 0]), 0.5, 1.5, -1.8, dt=0.5, t_final=1.5
+            ),
+        )
+        self.assertRaises(
+            ValueError,
+            lambda: physics.simulate_auv2_motion(
+                np.array([1, 0, 1, 0]), 0.5, 1.5, 1.8, dt=-0.5, t_final=1.5
+            ),
+        )
+        self.assertRaises(
+            ValueError,
+            lambda: physics.simulate_auv2_motion(
+                np.array([1, 0, 1, 0]), 0.5, 1.5, 1.8, dt=0.5, t_final=-1.5
             ),
         )

@@ -1,11 +1,11 @@
-import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 """CREATED A ROUNDING FUNCTION TO THREE DECIMAL PLACES"""
 
 
 def myRound(n):
-    return round(n, 3)
+    return np.round(n, 3)
 
 
 """Problem 1:
@@ -95,8 +95,10 @@ r: the distance from the axis of rotation to the point where the force is applie
 def calculate_torque(F_magnitude, F_direction, r):
     if r <= 0:
         raise ValueError("Distance is a magnitude cannot be negative")
-    return myRound(F_magnitude * r * math.sin(math.radians(F_direction)))
+    return myRound(F_magnitude * r * np.sin(np.deg2rad(F_direction)))
 
+
+# math.radians(float) is the same as np.deg2rad(float)
 
 """Problem 7
 Write a Python function, calculate_moment_of_inertia, that calculates the moment of inertia of an object given its mass and the distance from the axis of rotation to the center of mass of the object.
@@ -108,7 +110,7 @@ r: the distance from the axis of rotation to the center of mass of the object in
 def calculate_moment_of_inertia(mass, r):
     if mass <= 0:
         raise ValueError("Mass cannot be negative or 0")
-    return mass * r**2
+    return mass * np.power(r, 2)
 
 
 """Problem 8 (part 1)
@@ -130,13 +132,12 @@ def calculate_auv_acceleration(
 ):
     if mass <= 0 or volume <= 0:
         raise ValueError("Mass or volume cannot be negative or 0")
-    forces = np.copy(
+    return np.array(
         [
-            F_magnitude * math.cos(F_angle) / mass,
-            F_magnitude * math.sin(F_angle) / mass,
+            F_magnitude * np.cos(F_angle) / mass,
+            F_magnitude * np.sin(F_angle) / mass,
         ]
     )
-    return forces
 
 
 """Problem 8 (part 2)
@@ -154,7 +155,7 @@ def calculate_auv_angular_acceleration(
 ):
     if inertia <= 0:
         raise ValueError("Inertia cannot be negative or 0")
-    tau = calculate_torque(F_magnitude, math.degrees(F_angle), thruster_distance)
+    tau = calculate_torque(F_magnitude, np.rad2deg(F_angle), thruster_distance)
     print(tau)
     angular_acceleration = calculate_angular_acceleration(tau, inertia)
     return myRound(angular_acceleration)
@@ -173,17 +174,19 @@ Will return a tuple of the forces in the X-direction and Y-direction in m/s^2"""
 def calculate_auv2_acceleration(forces, alpha, theta, mass=100):
     if mass <= 0:
         raise ValueError("Mass cannot be less than zero")
-    alpha_rotation_matrix = np.copy(
+    if not np.shape(forces) == (4,):
+        raise ValueError("The shape of the array is not right")
+    projection_matrix = np.copy(
         [
-            [math.cos(alpha), math.cos(alpha), -math.cos(alpha), -math.cos(alpha)],
-            [math.sin(alpha), -math.sin(alpha), -math.sin(alpha), math.sin(alpha)],
+            [np.cos(alpha), np.cos(alpha), -np.cos(alpha), -np.cos(alpha)],
+            [np.sin(alpha), -np.sin(alpha), -np.sin(alpha), np.sin(alpha)],
         ]
     )
-    theta_rotation_matrix = np.copy(
-        [[math.cos(theta), -math.sin(theta)], [math.sin(theta), math.cos(theta)]]
+    rotation_matrix = np.copy(
+        [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
     )
-    world_forces = np.matmul(alpha_rotation_matrix, forces)
-    return np.matmul(world_forces, theta_rotation_matrix)
+    world_forces = np.matmul(projection_matrix, forces)
+    return np.matmul(rotation_matrix, world_forces) / mass
 
 
 """Write a Python function, calculate_auv2_angular_acceleration, that calculates the angular acceleration of the AUV.
@@ -201,8 +204,94 @@ def calculate_auv2_angular_acceleration(forces, alpha, L, l, inertia=100):
         raise ValueError(
             "Distance is a magnitude cannot be 0 or negative, inertia cannot be 0 or negative"
         )
-    netForce = 0
+    """netForce = 0
     for x in range(0, len(forces)):
-        netForce += forces[x] if x % 2 == 0 else -forces[x]
-    netTau = (L * math.sin(alpha) + l * math.cos(alpha)) * (netForce)
+        netForce += forces[x] if x % 2 == 0 else -forces[x]"""
+    projection_array = np.array([1, -1, 1, -1]).T
+    netForce = np.dot(projection_array, forces)
+    netTau = (L * np.sin(alpha) + l * np.cos(alpha)) * netForce
     return netTau / inertia
+
+
+"""Write a Python function, simulate_auv2_motion, that simulates the motion of the AUV in the 2D plane.
+The function should take the following arguments:
+T: an np.ndarray of the magnitudes of the forces applied by the thrusters in Newtons.
+alpha: the angle of the thrusters in radians.
+L: the distance from the center of mass of the AUV to the thrusters in meters.
+l: the distance from the center of mass of the AUV to the thrusters in meters.
+mass (optional): the mass of the AUV in kg. The default value is 100 kg.
+inertia (optional): the moment of inertia of the AUV in kg⋅m^2. The default value is 100kg⋅m^2.
+dt (optional): the time step of the simulation in seconds. The default value is 0.1s.
+t_final (optional): the final time of the simulation in seconds. The default value is 10s.
+x0 (optional): the initial x-position of the AUV in meters. The default value is 0m.
+y0 (optional): the initial y-position of the AUV in meters. The default value is 0m.
+theta0 (optional): the initial angle of the AUV in radians. The default value is 0rad.
+
+The function should return the following:
+t: an np.ndarray of the time steps of the simulation in seconds.
+x: an np.ndarray of the x-positions of the AUV in meters.
+y: an np.ndarray of the y-positions of the AUV in meters.
+theta: an np.ndarray of the angles of the AUV in radians.
+v: an np.ndarray of the velocities of the AUV in meters per second.
+omega: an np.ndarray of the angular velocities of the AUV in radians per second.
+a: an np.ndarray of the accelerations of the AUV in meters per second squared."""
+
+
+def simulate_auv2_motion(
+    T, alpha, L, l, mass=100, inertia=100, dt=0.1, t_final=10, x0=0, y0=0, theta0=0
+) -> tuple:
+    if L <= 0 or l <= 0 or mass <= 0 or inertia <= 0 or dt <= 0 or t_final <= 0:
+        raise ValueError("L, l, mass inertia, dt, or t_final is negative")
+    time = np.arange(0, t_final, dt)
+    x = np.zeros_like(time)
+    y = np.zeros_like(time)
+    theta = np.zeros_like(time)
+    omega = np.zeros_like(time)
+    v = np.zeros((len(time), 2))
+    a = np.zeros((len(time), 2))
+
+    x[0] = x0
+    y[0] = y0
+
+    angular_acceleration = calculate_auv2_angular_acceleration(
+        T, alpha, L, l, inertia=inertia
+    )
+    a[0] = calculate_auv2_acceleration(T, alpha, theta0, mass=mass)
+
+    theta[0] = theta0
+
+    for t in range(1, len(time)):
+        # POSITION STUFF
+        a[t] = calculate_auv2_acceleration(T, alpha, theta[t - 1], mass=mass)
+        v[t] = a[t - 1] * dt + v[t - 1]
+        x[t] = v[t - 1][0] * dt + x[t - 1]
+        y[t] = v[t - 1][1] * dt + y[t - 1]
+
+        # ANGLE STUFF
+        omega[t] = angular_acceleration * dt + omega[t - 1]
+        theta[t] = omega[t - 1] * dt + theta[t - 1]
+
+    return [time, x, y, theta, v, omega, a]
+
+
+"""Write a Python function, plot_auv2_motion, that plots the motion of the AUV in the 2D plane. No need to test this function. You can try it out in the Jupyter Notebook.
+The function should take the following arguments:
+t: an np.ndarray of the time steps of the simulation in seconds.
+x: an np.ndarray of the x-positions of the AUV in meters.
+y: an np.ndarray of the y-positions of the AUV in meters.
+theta: an np.ndarray of the angles of the AUV in radians.
+v: an np.ndarray of the velocities of the AUV in meters per second.
+omega: an np.ndarray of the angular velocities of the AUV in radians per second.
+a: an np.ndarray of the accelerations of the AUV in meters per second squared."""
+
+
+def plot_auv2_motion(t, x, y, theta, v, omega, a):
+    plt.plot(t, x, label="X-Position")
+    plt.plot(t, y, label="Y-Position")
+    """plt.plot(t, theta, label="Theta")
+    plt.plot(t, v, label="Velocity")
+    plt.plot(t, omega, label="Omega")
+    plt.plot(t, a, label="Acceleration")"""
+    plt.xlabel("Time (s)")
+    plt.legend()
+    plt.show()
